@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <!-- ======================================== -->
+
+  <script>
+/*
+  МАССИВ СЛОВ ДЛЯ ОРФОГРАФИИ
+  -------------------------
+  Формат:
+  1) Группы подряд идущих заглавных букв заменяются на input.
+  2) Английская X заменяется на input (X означает пустое место).
+*/
+
+const STRESSED_WORDS = 
+`
+прЕрогатива
+прЕамбула
+прЕпятствие
+прЕпоны
+прЕрия
+прЕзент
+прЕимущество
+прЕисподняя
+прЕгрешения
+прЕнебрегать
+прЕкословить
+прЕпираться
+прЕстол
+прЕвратный
+знак прЕпинания
+прЕсловутый
+прЕльстить
+прЕследовать
+прЕподаватель
+прЕподнести
+прЕпроводить
+прЕподобный
+камень прЕткновения
+прЕсмыкаться
+прЕпарировать
+прЕлюдия
+прЕмьера
+прЕстиж
+прЕзидент
+прЕтензия
+прЕзумпция
+прЕвентивный
+прЕлат
+прЕвалировать
+прЕзидиум
+прЕтендент
+прЕферанс
+прЕцедент
+прЕпарат
+прЕодолеть
+прЕбывать (находиться)
+прЕдать (кого-что)
+прЕдел (граница)
+прЕклонить (выразить уважение), прЕклоняться
+прЕступить (что)
+прЕтворить (воплотить)
+прЕходящий (тот, кто приходит)
+непрЕменный (необходимый)
+прЕзреть (отнестись прЕнебрежительно, свысока)
+прЕтерпеть (пережить)
+прЕемник (ученик)
+прЕставиться (умереть)
+прЕвратности (неприятности)
+непрЕложный (незыблемый, нерушимый)
+прИоритет
+прИвилегия
+прИбаутка
+прИвередливый
+прИгожий
+прИбор
+прИличия
+прИстойно
+прИесться
+прИказ
+прИключения
+прИкорнуть
+прИсяга
+прИтеснять
+прИчина
+прИчуда
+прИтязание
+прИрода
+прИмер
+прИческа
+прИскорбно
+прИволье
+прИцел
+прИмета
+прИверженец
+прИлежный
+прИчиндалы
+прИятный
+прИватный
+прИнцип
+прИмат
+прИмитив
+прИгодный
+прИсниться
+прИключение
+прИсудить
+прИзвание
+прИсмотреть
+прИспособить
+прИбывать (приезжать)
+прИдать (кому-чему, напр. форму)
+прИдел (пристройка)
+прИклонить(ся) (нагнув, наклонить)
+прИступить (к чему)
+прИтворить (закрыть)
+прИходящий (временный)
+прИзреть (позаботиться)
+прИтерпеться (привыкнуть)
+прИёмник (радио)
+прИставить (поставить к чему-либо)
+прИвратник (сторож)
+прИложить (положить вплотную)
+прИтвориться (затвориться)
+непрИменимый (нельзя использовать)
+`.trim().split('\n').map(line => line.trim())
+  </script>
+
+  <!-- ======================================== -->
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Тренажёр Приставки пре-/при- (слова на запомнить)</title>
+
+  <meta name="description" content="Тренажёр орфографии: вставляйте пропущенные буквы и проверяйте правописание. Случайный порядок сохраняется.">
+  <meta name="keywords" content="ЕГЭ русский, орфография, правописание, тренажёр">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:title" content="Тренажёр Приставки пре-/при- (слова на запомнить)">
+  <meta property="og:description" content="Заполняйте пропуски и проверяйте орфографию. Порядок сохраняется.">
+  <meta property="og:site_name" content="Тренажёр орфографии">
+  <meta name="twitter:title" content="Тренажёр Приставки пре-/при- (слова на запомнить)">
+  <meta name="twitter:description" content="Заполняйте пропуски и тренируйте правописание.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230f766e'/%3E%3Cpath d='M14 38 L28 24 L38 34 L52 20' stroke='white' stroke-width='6' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='46' cy='44' r='6' fill='%23f59e0b'/%3E%3C/svg%3E">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Literata:wght@500;700&family=Space+Grotesk:wght@400;600;700&display=swap');
+
+    :root {
+      --bg-1: #f7efe5;
+      --bg-2: #e4f2ee;
+      --ink: #1f1f1f;
+      --muted: #5f6368;
+      --accent: #0f766e;
+      --accent-2: #f59e0b;
+      --ok: #15803d;
+      --bad: #b91c1c;
+      --panel: rgba(255, 255, 255, 1);
+      --stroke: rgba(31, 31, 31, 0.08);
+      --shadow: 0 18px 50px rgba(15, 118, 110, 0.14);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(900px 520px at 8% -10%, rgba(245, 158, 11, 0.2), transparent 60%),
+        radial-gradient(900px 520px at 92% -16%, rgba(15, 118, 110, 0.2), transparent 60%),
+        linear-gradient(120deg, var(--bg-1), var(--bg-2));
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 28px 16px 120px;
+    }
+
+    main {
+      width: 100%;
+      max-width: 780px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tag {
+      align-self: flex-start;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.12);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: "Literata", serif;
+      font-size: clamp(26px, 4vw, 40px);
+      letter-spacing: 0.2px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 600px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      padding: clamp(18px, 3vw, 28px);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .quiz-area {
+      width: 100%;
+      min-height: clamp(240px, 46vh, 520px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .word {
+      font-family: "Literata", serif;
+      font-size: clamp(30px, 6vw, 46px);
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.2;
+      letter-spacing: 0.6px;
+      animation: wordIn 0.35s ease;
+    }
+
+    @keyframes wordIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .chunk {
+      display: inline;
+    }
+
+    .letter-input {
+      display: inline-block;
+      margin: 0 2px;
+      padding: 4px 6px;
+      min-width: 1.6ch;
+      border-radius: 10px;
+      border: 2px dashed rgba(15, 118, 110, 0.35);
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--ink);
+      font: inherit;
+      text-align: center;
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.08s ease;
+    }
+
+    .letter-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.14);
+    }
+
+    .letter-input.correct {
+      border-color: var(--ok);
+      background: rgba(21, 128, 61, 0.12);
+    }
+
+    .letter-input.wrong {
+      border-color: var(--bad);
+      background: rgba(185, 28, 28, 0.12);
+    }
+
+    .result {
+      font-size: 18px;
+      font-weight: 600;
+      min-height: 24px;
+    }
+
+    .result.ok {
+      color: var(--ok);
+    }
+
+    .result.bad {
+      color: var(--bad);
+    }
+
+    .stats {
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      max-width: 520px;
+      line-height: 1.4;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .check-btn {
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), #0b9288);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(15, 118, 110, 0.3);
+      transition: transform 0.08s ease, box-shadow 0.15s ease;
+    }
+
+    .check-btn:hover {
+      box-shadow: 0 12px 28px rgba(15, 118, 110, 0.36);
+    }
+
+    .check-btn:active {
+      transform: translateY(1px);
+    }
+
+    .check-btn:disabled {
+      background: #cfd8d7;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .restart-wrap {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .restart-btn {
+      width: 100%;
+      max-width: 420px;
+      padding: 16px 18px;
+      font-size: clamp(18px, 2.8vw, 24px);
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), #0b9288);
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(15, 118, 110, 0.28);
+      transition: transform 0.08s ease, box-shadow 0.15s ease;
+    }
+
+    .restart-btn:hover {
+      box-shadow: 0 10px 26px rgba(15, 118, 110, 0.34);
+    }
+
+    .restart-btn:active {
+      transform: translateY(1px);
+    }
+
+    .reset-btn {
+      padding: 8px 12px;
+      border: 1px solid rgba(31, 31, 31, 0.2);
+      border-radius: 10px;
+      background: #fff;
+      color: #374151;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .list-btn {
+      background: #fff;
+    }
+
+    .word-dialog {
+      border: none;
+      border-radius: var(--radius);
+      width: min(640px, 92vw);
+      padding: 18px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .word-dialog::backdrop {
+      background: rgba(15, 118, 110, 0.24);
+      backdrop-filter: blur(2px);
+    }
+
+    .dialog-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .dialog-head h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .word-list {
+      margin: 0;
+      white-space: pre-wrap;
+      font-family: "Literata", serif;
+      font-size: 15px;
+      line-height: 1.55;
+      max-height: 60vh;
+      overflow: auto;
+    }
+
+    .wrong-list {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      padding: 14px;
+      font-size: 14px;
+      box-shadow: 0 10px 26px rgba(31, 31, 31, 0.08);
+    }
+
+    .wrong-list h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .wrong-list p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .wrong-list ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .wrong-list li {
+      margin: 8px 0;
+      line-height: 1.4;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    footer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.92);
+      border-top: 1px solid var(--stroke);
+      backdrop-filter: blur(6px);
+      z-index: 20;
+    }
+
+    .footer-inner {
+      width: 100%;
+      max-width: 780px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--muted);
+      padding: 12px 16px;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 540px) {
+      .footer-inner {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+      }
+    }
+  </style>
+<!-- 
+  <meta name="theme-color" content="#0f766e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png"> -->
+</head>
+<body>
+
+  <main>
+    <header class="hero">
+      <span class="tag">Орфография</span>
+      <h2>Тренажёр Приставки пре-/при- (слова на запомнить)</h2>
+      <!-- <p>Заполните пропуски в словах. Группы заглавных букв и символы X превращаются в поля ввода. Если X означает пустое место, оставьте поле пустым.</p> -->
+    </header>
+
+    <section class="panel">
+      <div class="quiz-area">
+        <div class="word" id="word"></div>
+        <div class="result" id="result"></div>
+        <div class="stats" id="stats"></div>
+        <div class="hint" id="hint"></div>
+        <div class="controls">
+          <button class="check-btn" id="checkBtn" type="button">Проверить</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="restart-wrap hidden" id="restartWrap">
+      <button class="restart-btn" id="restartBtn" type="button">Пройти заново</button>
+    </div>
+
+    <section class="wrong-list" id="wrongList"></section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div id="progress"></div>
+      <button class="reset-btn" id="resetTestBtn" type="button">Сбросить тест</button>
+      <button class="reset-btn list-btn" id="openListBtn" type="button">Список слов</button>
+    </div>
+  </footer>
+
+  <dialog class="word-dialog" id="wordListDialog">
+    <div class="dialog-head">
+      <h3>Список слов</h3>
+      <button class="reset-btn" id="closeListBtn" type="button">Закрыть</button>
+    </div>
+    <pre class="word-list" id="wordListOutput"></pre>
+  </dialog>
+
+  <script>
+    const STORAGE_KEY = "p9ig5l";
+    const LIMIT_INPUT_LENGTH = true;
+
+    function normalizeValue(text) {
+      return text.toLowerCase();
+    }
+
+    function tokenize(word) {
+      const tokens = [];
+      const re = /([A-ZА-ЯЁ]+|[Xx]+)/g;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = re.exec(word)) !== null) {
+        if (match.index > lastIndex) {
+          tokens.push({
+            type: "text",
+            value: word.slice(lastIndex, match.index),
+          });
+        }
+
+        const raw = match[0];
+        if (/^[Xx]+$/.test(raw)) {
+          tokens.push({
+            type: "input",
+            answer: "",
+            length: raw.length,
+            kind: "empty",
+          });
+        } else {
+          tokens.push({
+            type: "input",
+            answer: normalizeValue(raw),
+            length: raw.length,
+            kind: "upper",
+          });
+        }
+
+        lastIndex = match.index + raw.length;
+      }
+
+      if (lastIndex < word.length) {
+        tokens.push({
+          type: "text",
+          value: word.slice(lastIndex),
+        });
+      }
+
+      return tokens;
+    }
+
+    const DATA = STRESSED_WORDS.map(original => {
+      const tokens = tokenize(original);
+      const correct = tokens
+        .map(token => (token.type === "text" ? normalizeValue(token.value) : normalizeValue(token.answer)))
+        .join("");
+
+      return {
+        original,
+        tokens,
+        correct,
+      };
+    });
+
+    function shuffleOrder(length) {
+      const order = Array.from({ length }, (_, i) => i);
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+      return order;
+    }
+
+    function buildInitialState() {
+      return {
+        version: 3,
+        order: shuffleOrder(DATA.length),
+        index: 0,
+        correct: 0,
+        total: 0,
+        finished: false,
+        wrong: [],
+      };
+    }
+
+    function normalizeState(raw) {
+      const next = buildInitialState();
+      if (!raw || typeof raw !== "object") return next;
+
+      if (
+        Array.isArray(raw.order) &&
+        raw.order.length === DATA.length &&
+        raw.order.every(i => Number.isInteger(i) && i >= 0 && i < DATA.length)
+      ) {
+        next.order = raw.order.slice();
+      }
+
+      next.index = Number.isInteger(raw.index) ? raw.index : 0;
+      next.correct = Number.isInteger(raw.correct) ? raw.correct : 0;
+      next.total = Number.isInteger(raw.total) ? raw.total : 0;
+      next.finished = Boolean(raw.finished);
+      next.wrong = Array.isArray(raw.wrong)
+        ? raw.wrong.filter(item => item && typeof item === "object")
+        : [];
+
+      if (next.index >= DATA.length && DATA.length > 0) next.finished = true;
+      return next;
+    }
+
+    let state = normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY)));
+    let locked = false;
+    let currentItem = null;
+    let currentInputs = [];
+
+    const wordEl = document.getElementById("word");
+    const resultEl = document.getElementById("result");
+    const statsEl = document.getElementById("stats");
+    const hintEl = document.getElementById("hint");
+    const progressEl = document.getElementById("progress");
+    const wrongListEl = document.getElementById("wrongList");
+    const restartWrapEl = document.getElementById("restartWrap");
+    const restartBtnEl = document.getElementById("restartBtn");
+    const resetTestBtnEl = document.getElementById("resetTestBtn");
+    const checkBtnEl = document.getElementById("checkBtn");
+    const listBtnEl = document.getElementById("openListBtn");
+    const listDialogEl = document.getElementById("wordListDialog");
+    const closeListBtnEl = document.getElementById("closeListBtn");
+    const wordListOutputEl = document.getElementById("wordListOutput");
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function resetProgress() {
+      localStorage.removeItem(STORAGE_KEY);
+      state = buildInitialState();
+      locked = false;
+      render();
+    }
+
+    function sanitizeInput(value) {
+      return value.replace(/[^a-zа-яё]/gi, "");
+    }
+
+    function buildWordList(words) {
+      return words
+        .map(word => word.toLowerCase().replace(/x/g, "").trim())
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    function mergeAnswer(tokens, parts) {
+      let index = 0;
+      return tokens
+        .map(token => {
+          if (token.type === "text") return normalizeValue(token.value);
+          const part = parts[index] ?? "";
+          index += 1;
+          return part;
+        })
+        .join("");
+    }
+
+    function renderWrongList() {
+      if (!state.wrong.length) {
+        wrongListEl.innerHTML = "<h3>Ошибки</h3><p>Пока ошибок нет.</p>";
+        return;
+      }
+
+      const items = state.wrong
+        .map(item => `
+          <li>
+            Ваш ответ: <b>${item.userAnswer}</b><br>
+            Правильный: <b>${item.correctAnswer}</b>
+          </li>
+        `)
+        .join("");
+
+      wrongListEl.innerHTML = `<h3>Ошибки (${state.wrong.length})</h3><ul>${items}</ul>`;
+    }
+
+    function render() {
+      if (!DATA.length) {
+        wordEl.textContent = "Что-то пошло не так";
+        return;
+      }
+
+      renderWrongList();
+
+      if (state.finished || state.index >= DATA.length) {
+        state.finished = true;
+        save();
+        wordEl.textContent = "Все слова пройдены";
+        resultEl.textContent = "Тест завершен.";
+        resultEl.className = "result";
+        statsEl.textContent = `Итог: ${state.correct} / ${DATA.length}`;
+        hintEl.textContent = "";
+        progressEl.textContent = `Пройдено: ${DATA.length} / ${DATA.length}`;
+        restartWrapEl.classList.remove("hidden");
+        resetTestBtnEl.classList.add("hidden");
+        checkBtnEl.disabled = true;
+        return;
+      }
+
+      const item = DATA[state.order[state.index]];
+      currentItem = item;
+      currentInputs = [];
+
+      wordEl.innerHTML = "";
+      resultEl.textContent = "";
+      resultEl.className = "result";
+      restartWrapEl.classList.add("hidden");
+      resetTestBtnEl.classList.remove("hidden");
+      locked = false;
+
+      item.tokens.forEach(token => {
+        if (token.type === "text") {
+          const span = document.createElement("span");
+          span.className = "chunk";
+          span.textContent = normalizeValue(token.value);
+          wordEl.appendChild(span);
+          return;
+        }
+
+        const input = document.createElement("input");
+        const maxLen = Math.max(1, token.length);
+        input.type = "text";
+        input.className = "letter-input";
+        if (LIMIT_INPUT_LENGTH) {
+          input.maxLength = maxLen;
+          input.style.width = `${maxLen + 0.4}ch`;
+        } else {
+          input.style.width = `${2 + 0.4}ch`;
+        }
+        input.setAttribute("inputmode", "text");
+        input.setAttribute("autocomplete", "off");
+        input.setAttribute("autocapitalize", "none");
+        input.setAttribute("spellcheck", "false");
+        input.dataset.answer = normalizeValue(token.answer);
+        input.dataset.kind = token.kind;
+
+        input.addEventListener("input", () => {
+          input.value = sanitizeInput(input.value);
+          if (LIMIT_INPUT_LENGTH && input.value.length >= maxLen) {
+            const next = currentInputs[currentInputs.indexOf(input) + 1];
+            if (next) next.focus();
+          }
+        });
+
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            checkAnswer();
+          }
+        });
+
+        currentInputs.push(input);
+        wordEl.appendChild(input);
+      });
+
+      statsEl.textContent = `Правильных ответов: ${state.correct} / ${state.total}`;
+      progressEl.textContent = `Пройдено: ${state.index} / ${DATA.length}`;
+      // hintEl.textContent = "Заглавные буквы и X превращаются в поля. Если X означает пустое место, оставьте поле пустым.";
+      checkBtnEl.disabled = currentInputs.length === 0;
+
+      if (currentInputs[0]) {
+        setTimeout(() => currentInputs[0].focus(), 0);
+      }
+    }
+
+    function checkAnswer() {
+      if (locked || !currentItem) return;
+      if (!currentInputs.length) return;
+
+      locked = true;
+      const userParts = currentInputs.map(input => normalizeValue(sanitizeInput(input.value)));
+      const correctParts = currentInputs.map(input => input.dataset.answer || "");
+
+      let allCorrect = true;
+      currentInputs.forEach((input, index) => {
+        const userValue = userParts[index];
+        const correctValue = correctParts[index];
+        if (userValue === correctValue) {
+          input.classList.add("correct");
+        } else {
+          input.classList.add("wrong");
+          allCorrect = false;
+        }
+      });
+
+      const userAnswer = mergeAnswer(currentItem.tokens, userParts);
+      const correctAnswer = mergeAnswer(currentItem.tokens, correctParts);
+
+      state.total += 1;
+      if (allCorrect) {
+        state.correct += 1;
+        resultEl.textContent = "Верно";
+        resultEl.classList.add("ok");
+      } else {
+        resultEl.textContent = "Неверно";
+        resultEl.classList.add("bad");
+        state.wrong.push({
+          word: currentItem.original,
+          userAnswer,
+          correctAnswer,
+          answeredAt: Date.now(),
+        });
+      }
+
+      state.index += 1;
+      if (state.index >= DATA.length) state.finished = true;
+      save();
+      renderWrongList();
+
+      setTimeout(render, 1200);
+    }
+
+    restartBtnEl.addEventListener("click", resetProgress);
+    resetTestBtnEl.addEventListener("click", resetProgress);
+    checkBtnEl.addEventListener("click", checkAnswer);
+
+    if (wordListOutputEl) {
+      wordListOutputEl.textContent = buildWordList(STRESSED_WORDS);
+    }
+
+    if (listBtnEl && listDialogEl) {
+      listBtnEl.addEventListener("click", () => {
+        if (typeof listDialogEl.showModal === "function") {
+          listDialogEl.showModal();
+        } else {
+          listDialogEl.setAttribute("open", "open");
+        }
+      });
+    }
+
+    if (closeListBtnEl && listDialogEl) {
+      closeListBtnEl.addEventListener("click", () => {
+        if (typeof listDialogEl.close === "function") {
+          listDialogEl.close();
+        } else {
+          listDialogEl.removeAttribute("open");
+        }
+      });
+    }
+
+    if (listDialogEl) {
+      listDialogEl.addEventListener("click", event => {
+        if (event.target === listDialogEl) {
+          if (typeof listDialogEl.close === "function") {
+            listDialogEl.close();
+          } else {
+            listDialogEl.removeAttribute("open");
+          }
+        }
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
