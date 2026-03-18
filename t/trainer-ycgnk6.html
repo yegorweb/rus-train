@@ -740,8 +740,10 @@ const STRESSED_WORDS =
         input.className = "letter-input";
         if (LIMIT_INPUT_LENGTH) {
           input.maxLength = maxLen;
+          input.style.width = `${maxLen + 0.4}ch`;
+        } else {
+          input.style.width = `${2 + 0.4}ch`;
         }
-        input.style.width = `${maxLen + 0.4}ch`;
         input.setAttribute("inputmode", "text");
         input.setAttribute("autocomplete", "off");
         input.setAttribute("autocapitalize", "none");
