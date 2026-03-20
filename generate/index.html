@@ -567,6 +567,35 @@ const STRESSED_WORDS =
       background: #fff;
     }
 
+    .settings-btn {
+      border: none;
+      background: transparent;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 2px;
+    }
+
+    .dialog-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .dialog-label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .settings-input {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(31, 31, 31, 0.2);
+      padding: 10px 12px;
+      font: inherit;
+    }
+
     .word-dialog {
       border: none;
       border-radius: var(--radius);
@@ -723,6 +752,7 @@ const STRESSED_WORDS =
       <div id="progress"></div>
       <button class="reset-btn" id="resetTestBtn" type="button">Сбросить тест</button>
       <button class="reset-btn list-btn" id="openListBtn" type="button">Список слов</button>
+      <button class="settings-btn" id="openSettingsBtn" type="button">Настройки</button>
     </div>
   </footer>
 
@@ -734,9 +764,24 @@ const STRESSED_WORDS =
     <pre class="word-list" id="wordListOutput"></pre>
   </dialog>
 
+  <dialog class="word-dialog" id="settingsDialog">
+    <div class="dialog-head">
+      <h3>Настройки</h3>
+      <button class="reset-btn" id="closeSettingsBtn" type="button">Закрыть</button>
+    </div>
+    <div class="dialog-field">
+      <label class="dialog-label" for="delayInput">Задержка перед сменой слова (мс)</label>
+      <input class="settings-input" id="delayInput" type="number" min="0" step="100" />
+      <div class="hint">Например: 800 или 1200. Значение сохраняется.</div>
+      <button class="reset-btn" id="resetSettingsBtn" type="button">Сбросить настройки</button>
+    </div>
+  </dialog>
+
   <script>
     const STORAGE_KEY = "{{{__STORAGE__KEY__}}}";
     const LIMIT_INPUT_LENGTH = {{{__LIMIT_INPUT_LENGTH__}}};
+    const SETTINGS_KEY = `${STORAGE_KEY}-settings`;
+    const DEFAULT_DELAY_MS = 1000;
 
     function normalizeValue(text) {
       return text.toLowerCase();
@@ -844,6 +889,29 @@ const STRESSED_WORDS =
       return next;
     }
 
+    function normalizeDelay(value) {
+      if (value === undefined || value === null || value === "") return DEFAULT_DELAY_MS;
+      const num = Number(value);
+      if (!Number.isFinite(num) || num < 0) return DEFAULT_DELAY_MS;
+      return Math.round(num);
+    }
+
+    function loadSettings() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+        return {
+          delayMs: normalizeDelay(raw && raw.delayMs),
+        };
+      } catch (error) {
+        return { delayMs: DEFAULT_DELAY_MS };
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    let settings = loadSettings();
     let state = normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY)));
     let locked = false;
     let currentItem = null;
@@ -863,6 +931,11 @@ const STRESSED_WORDS =
     const listDialogEl = document.getElementById("wordListDialog");
     const closeListBtnEl = document.getElementById("closeListBtn");
     const wordListOutputEl = document.getElementById("wordListOutput");
+    const settingsBtnEl = document.getElementById("openSettingsBtn");
+    const settingsDialogEl = document.getElementById("settingsDialog");
+    const closeSettingsBtnEl = document.getElementById("closeSettingsBtn");
+    const delayInputEl = document.getElementById("delayInput");
+    const resetSettingsBtnEl = document.getElementById("resetSettingsBtn");
 
     function save() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -884,6 +957,13 @@ const STRESSED_WORDS =
         .map(word => word.toLowerCase().replace(/x/g, "").trim())
         .filter(Boolean)
         .join("\n");
+    }
+
+    function updateDelay(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num) || num < 0) return;
+      settings.delayMs = Math.round(num);
+      saveSettings();
     }
 
     function mergeAnswer(tokens, parts) {
@@ -1049,7 +1129,7 @@ const STRESSED_WORDS =
       save();
       renderWrongList();
 
-      setTimeout(render, 1200);
+      setTimeout(render, settings.delayMs);
     }
 
     restartBtnEl.addEventListener("click", resetProgress);
@@ -1089,6 +1169,65 @@ const STRESSED_WORDS =
             listDialogEl.removeAttribute("open");
           }
         }
+      });
+    }
+
+    if (delayInputEl) {
+      delayInputEl.value = settings.delayMs;
+      delayInputEl.addEventListener("input", () => {
+        if (delayInputEl.value.trim() === "") return;
+        updateDelay(delayInputEl.value);
+      });
+      delayInputEl.addEventListener("blur", () => {
+        if (delayInputEl.value.trim() === "") {
+          delayInputEl.value = settings.delayMs;
+          return;
+        }
+        const num = Number(delayInputEl.value);
+        if (!Number.isFinite(num) || num < 0) {
+          delayInputEl.value = settings.delayMs;
+        }
+      });
+    }
+
+    if (settingsBtnEl && settingsDialogEl) {
+      settingsBtnEl.addEventListener("click", () => {
+        if (delayInputEl) delayInputEl.value = settings.delayMs;
+        if (typeof settingsDialogEl.showModal === "function") {
+          settingsDialogEl.showModal();
+        } else {
+          settingsDialogEl.setAttribute("open", "open");
+        }
+      });
+    }
+
+    if (closeSettingsBtnEl && settingsDialogEl) {
+      closeSettingsBtnEl.addEventListener("click", () => {
+        if (typeof settingsDialogEl.close === "function") {
+          settingsDialogEl.close();
+        } else {
+          settingsDialogEl.removeAttribute("open");
+        }
+      });
+    }
+
+    if (settingsDialogEl) {
+      settingsDialogEl.addEventListener("click", event => {
+        if (event.target === settingsDialogEl) {
+          if (typeof settingsDialogEl.close === "function") {
+            settingsDialogEl.close();
+          } else {
+            settingsDialogEl.removeAttribute("open");
+          }
+        }
+      });
+    }
+
+    if (resetSettingsBtnEl && delayInputEl) {
+      resetSettingsBtnEl.addEventListener("click", () => {
+        settings.delayMs = DEFAULT_DELAY_MS;
+        saveSettings();
+        delayInputEl.value = settings.delayMs;
       });
     }
 
