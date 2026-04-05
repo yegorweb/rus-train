@@ -284,6 +284,14 @@
         <div class="hint">Если включено, длина поля равна длине пропуска и фокус переходит к следующему полю при заполнении.</div>
       </div>
 
+      <div class="field" style="margin-top: 10px;">
+        <label class="option" for="spaceModeToggle">
+          <input id="spaceModeToggle" type="checkbox" />
+          Режим пробелов
+        </label>
+        <div class="hint">Для проверки слитно/раздельно: используйте [ ] (пробел) и [] или X (без пробела). В этом режиме ограничение длины обязательно.</div>
+      </div>
+
       <div class="controls" style="margin-top: 18px;">
         <button class="btn" id="generateBtn" type="button">Сгенерировать HTML</button>
         <div class="meta">Хэш: <strong id="hashOutput">—</strong></div>
@@ -832,8 +840,10 @@ const STRESSED_WORDS =
   <script>
     const STORAGE_KEY = "{{{__STORAGE__KEY__}}}";
     const LIMIT_INPUT_LENGTH = {{{__LIMIT_INPUT_LENGTH__}}};
+    const SPACE_TRAINING_MODE = {{{__SPACE_TRAINING_MODE__}}};
     const SETTINGS_KEY = `${STORAGE_KEY}-settings`;
     const DEFAULT_DELAY_MS = 1000;
+    const limitLength = SPACE_TRAINING_MODE ? true : LIMIT_INPUT_LENGTH;
 
     function normalizeValue(text) {
       return text.toLowerCase();
@@ -1145,13 +1155,23 @@ const STRESSED_WORDS =
 
         const input = document.createElement("input");
         const maxLen = Math.max(1, token.length);
+        const baseWidth = limitLength ? `${maxLen + 0.4}ch` : `${2 + 0.4}ch`;
+        const isSpaceSlot = SPACE_TRAINING_MODE
+          && (token.kind === "empty" || /^\s*$/.test(token.answer || ""));
         input.type = "text";
         input.className = "letter-input";
-        if (LIMIT_INPUT_LENGTH) {
+        if (limitLength) {
           input.maxLength = maxLen;
-          input.style.width = `${maxLen + 0.4}ch`;
-        } else {
-          input.style.width = `${2 + 0.4}ch`;
+        }
+        input.style.width = isSpaceSlot ? "0.12ch" : baseWidth;
+        if (isSpaceSlot) {
+          input.dataset.spaceSlot = "true";
+          input.dataset.baseWidth = baseWidth;
+          input.dataset.narrowWidth = "0.12ch";
+          input.dataset.basePadding = "4px 6px";
+          input.dataset.narrowPadding = "1px 2px";
+          input.style.minWidth = input.dataset.narrowWidth;
+          input.style.padding = input.dataset.narrowPadding;
         }
         input.setAttribute("inputmode", "text");
         input.setAttribute("autocomplete", "off");
@@ -1162,7 +1182,18 @@ const STRESSED_WORDS =
 
         input.addEventListener("input", () => {
           input.value = sanitizeInput(input.value);
-          if (LIMIT_INPUT_LENGTH && input.value.length >= maxLen) {
+          if (input.dataset.spaceSlot === "true") {
+            if (input.value.length === 0) {
+              input.style.width = input.dataset.narrowWidth;
+              input.style.minWidth = input.dataset.narrowWidth;
+              input.style.padding = input.dataset.narrowPadding;
+            } else {
+              input.style.width = input.dataset.baseWidth;
+              input.style.minWidth = input.dataset.baseWidth;
+              input.style.padding = input.dataset.basePadding;
+            }
+          }
+          if (limitLength && input.value.length >= maxLen) {
             const next = currentInputs[currentInputs.indexOf(input) + 1];
             if (next) next.focus();
           }
@@ -1350,6 +1381,7 @@ const STRESSED_WORDS =
     const topicInput = document.getElementById("topicInput");
     const wordsInput = document.getElementById("wordsInput");
     const limitLengthToggle = document.getElementById("limitLengthToggle");
+    const spaceModeToggle = document.getElementById("spaceModeToggle");
     const generateBtn = document.getElementById("generateBtn");
     const hashOutput = document.getElementById("hashOutput");
     const countOutput = document.getElementById("countOutput");
@@ -1383,7 +1415,7 @@ const STRESSED_WORDS =
       countOutput.textContent = lines.length.toString();
     }
 
-    function buildHtml(topic, lines, hash, limitLength) {
+    function buildHtml(topic, lines, hash, limitLength, spaceMode) {
       const safeTopic = topic.replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const wordsBlock = lines.join("\n");
 
@@ -1391,6 +1423,7 @@ const STRESSED_WORDS =
         .replaceAll("{{{__TRAIN__TOPIC__}}}", safeTopic)
         .replaceAll("{{{{__STRESSED__WORDS__}}}}", wordsBlock)
         .replaceAll("{{{__LIMIT_INPUT_LENGTH__}}}", limitLength ? "true" : "false")
+        .replaceAll("{{{__SPACE_TRAINING_MODE__}}}", spaceMode ? "true" : "false")
         .replaceAll("{{{__STORAGE__KEY__}}}", hash);
     }
 
@@ -1425,17 +1458,32 @@ const STRESSED_WORDS =
       }
 
       const hash = buildHash(topic, lines);
-      const limitLength = limitLengthToggle ? limitLengthToggle.checked : true;
-      const html = buildHtml(topic, lines, hash, limitLength);
+      const spaceMode = spaceModeToggle ? spaceModeToggle.checked : false;
+      const limitLength = spaceMode ? true : (limitLengthToggle ? limitLengthToggle.checked : true);
+      const html = buildHtml(topic, lines, hash, limitLength, spaceMode);
       const fileName = `trainer-${hash}.html`;
       downloadFile(html, fileName);
       setStatus(`Готово. Файл ${fileName} скачан.`, true);
     }
 
+    function syncLimitToggle() {
+      if (!limitLengthToggle) return;
+      if (spaceModeToggle && spaceModeToggle.checked) {
+        limitLengthToggle.checked = true;
+        limitLengthToggle.disabled = true;
+      } else {
+        limitLengthToggle.disabled = false;
+      }
+    }
+
     topicInput.addEventListener("input", updateMeta);
     wordsInput.addEventListener("input", updateMeta);
     generateBtn.addEventListener("click", handleGenerate);
+    if (spaceModeToggle) {
+      spaceModeToggle.addEventListener("change", syncLimitToggle);
+    }
 
+    syncLimitToggle();
     updateMeta();
   </script>
 </body>
