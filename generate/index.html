@@ -260,7 +260,7 @@
     <header class="hero">
       <span class="tag">Генератор</span>
       <h2>Генератор тренажёров</h2>
-      <p>Заполните тему и список слов. Заглавные подряд идущие группы превращаются в поля ввода, а английская X означает пустое место.</p>
+      <p>Заполните тему и список слов. Заглавные подряд идущие группы превращаются в поля ввода, английская X означает пустое место, а формат [x] позволяет проверять любые символы (включая пробелы).</p>
     </header>
 
     <section class="panel">
@@ -272,8 +272,8 @@
       <div class="field" style="margin-top: 16px;">
         <label for="wordsInput">Проверяемые строки (каждая с новой строки)</label>
         <textarea id="wordsInput" placeholder="кАстанЬЕтX"></textarea>
-        <div class="hint">Формат: группы заглавных букв = пропуск, английская X = пустой пропуск.</div>
-        <div class="example">Пример строк: вОрОнА · кОрОвА · гектарОВ · бахилX</div>
+        <div class="hint">Формат: заглавные группы = пропуск, английская X = пустой пропуск, [x] = любая группа символов (может быть пустой).</div>
+        <div class="example">Пример строк: вОрОнА · н[е]где · кОрОвА · бахилX · до[ ]ма</div>
       </div>
 
       <div class="field" style="margin-top: 14px;">
@@ -839,17 +839,17 @@ const STRESSED_WORDS =
       return text.toLowerCase();
     }
 
-    function tokenize(word) {
+    function tokenizePlain(text) {
       const tokens = [];
       const re = /([A-ZА-ЯЁ]+|[Xx]+)/g;
       let lastIndex = 0;
       let match;
 
-      while ((match = re.exec(word)) !== null) {
+      while ((match = re.exec(text)) !== null) {
         if (match.index > lastIndex) {
           tokens.push({
             type: "text",
-            value: word.slice(lastIndex, match.index),
+            value: text.slice(lastIndex, match.index),
           });
         }
 
@@ -873,11 +873,46 @@ const STRESSED_WORDS =
         lastIndex = match.index + raw.length;
       }
 
-      if (lastIndex < word.length) {
+      if (lastIndex < text.length) {
         tokens.push({
           type: "text",
-          value: word.slice(lastIndex),
+          value: text.slice(lastIndex),
         });
+      }
+
+      return tokens;
+    }
+
+    function tokenize(word) {
+      const tokens = [];
+      let cursor = 0;
+
+      while (cursor < word.length) {
+        const openIndex = word.indexOf("[", cursor);
+        if (openIndex === -1) {
+          tokens.push(...tokenizePlain(word.slice(cursor)));
+          break;
+        }
+
+        if (openIndex > cursor) {
+          tokens.push(...tokenizePlain(word.slice(cursor, openIndex)));
+        }
+
+        const closeIndex = word.indexOf("]", openIndex + 1);
+        if (closeIndex === -1) {
+          tokens.push(...tokenizePlain(word.slice(openIndex)));
+          break;
+        }
+
+        const raw = word.slice(openIndex + 1, closeIndex);
+        tokens.push({
+          type: "input",
+          answer: normalizeValue(raw),
+          length: raw.length,
+          kind: "bracket",
+        });
+
+        cursor = closeIndex + 1;
       }
 
       return tokens;
@@ -1002,12 +1037,18 @@ const STRESSED_WORDS =
     }
 
     function sanitizeInput(value) {
-      return value.replace(/[^a-zа-яё]/gi, "");
+      return value.replace(/[\r\n]+/g, "");
     }
 
     function buildWordList(words) {
       return words
-        .map(word => word.toLowerCase().replace(/x/g, "").trim())
+        .map(word => {
+          const tokens = tokenize(word);
+          const parts = tokens
+            .filter(token => token.type === "input")
+            .map(token => token.answer || "");
+          return mergeAnswer(tokens, parts).trim();
+        })
         .filter(Boolean)
         .join("\n");
     }
