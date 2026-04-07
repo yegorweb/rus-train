@@ -784,24 +784,26 @@ const STRESSED_WORDS =
   <script>
     const STORAGE_KEY = "ee7p8o";
     const LIMIT_INPUT_LENGTH = true;
+    const SPACE_TRAINING_MODE = false;
     const SETTINGS_KEY = `${STORAGE_KEY}-settings`;
     const DEFAULT_DELAY_MS = 1000;
+    const limitLength = SPACE_TRAINING_MODE ? true : LIMIT_INPUT_LENGTH;
 
     function normalizeValue(text) {
       return text.toLowerCase();
     }
 
-    function tokenize(word) {
+    function tokenizePlain(text) {
       const tokens = [];
       const re = /([A-ZА-ЯЁ]+|[Xx]+)/g;
       let lastIndex = 0;
       let match;
 
-      while ((match = re.exec(word)) !== null) {
+      while ((match = re.exec(text)) !== null) {
         if (match.index > lastIndex) {
           tokens.push({
             type: "text",
-            value: word.slice(lastIndex, match.index),
+            value: text.slice(lastIndex, match.index),
           });
         }
 
@@ -825,11 +827,46 @@ const STRESSED_WORDS =
         lastIndex = match.index + raw.length;
       }
 
-      if (lastIndex < word.length) {
+      if (lastIndex < text.length) {
         tokens.push({
           type: "text",
-          value: word.slice(lastIndex),
+          value: text.slice(lastIndex),
         });
+      }
+
+      return tokens;
+    }
+
+    function tokenize(word) {
+      const tokens = [];
+      let cursor = 0;
+
+      while (cursor < word.length) {
+        const openIndex = word.indexOf("[", cursor);
+        if (openIndex === -1) {
+          tokens.push(...tokenizePlain(word.slice(cursor)));
+          break;
+        }
+
+        if (openIndex > cursor) {
+          tokens.push(...tokenizePlain(word.slice(cursor, openIndex)));
+        }
+
+        const closeIndex = word.indexOf("]", openIndex + 1);
+        if (closeIndex === -1) {
+          tokens.push(...tokenizePlain(word.slice(openIndex)));
+          break;
+        }
+
+        const raw = word.slice(openIndex + 1, closeIndex);
+        tokens.push({
+          type: "input",
+          answer: normalizeValue(raw),
+          length: raw.length,
+          kind: "bracket",
+        });
+
+        cursor = closeIndex + 1;
       }
 
       return tokens;
@@ -920,6 +957,8 @@ const STRESSED_WORDS =
     let locked = false;
     let currentItem = null;
     let currentInputs = [];
+    let lastSubmitAt = 0;
+    const SUBMIT_COOLDOWN_MS = 150;
 
     const wordEl = document.getElementById("word");
     const panelEl = document.getElementById("panel");
@@ -954,12 +993,18 @@ const STRESSED_WORDS =
     }
 
     function sanitizeInput(value) {
-      return value.replace(/[^a-zа-яё]/gi, "");
+      return value.replace(/[\r\n]+/g, "");
     }
 
     function buildWordList(words) {
       return words
-        .map(word => word.toLowerCase().replace(/x/g, "").trim())
+        .map(word => {
+          const tokens = tokenize(word);
+          const parts = tokens
+            .filter(token => token.type === "input")
+            .map(token => token.answer || "");
+          return mergeAnswer(tokens, parts).trim();
+        })
         .filter(Boolean)
         .join("\n");
     }
@@ -1056,13 +1101,26 @@ const STRESSED_WORDS =
 
         const input = document.createElement("input");
         const maxLen = Math.max(1, token.length);
+        const baseWidth = limitLength ? `${maxLen + 0.4}ch` : `${2 + 0.4}ch`;
+        const isSpaceSlot = SPACE_TRAINING_MODE
+          && (token.kind === "empty" || /^\s*$/.test(token.answer || ""));
         input.type = "text";
         input.className = "letter-input";
-        if (LIMIT_INPUT_LENGTH) {
+        if (limitLength) {
           input.maxLength = maxLen;
-          input.style.width = `${maxLen + 0.4}ch`;
-        } else {
-          input.style.width = `${2 + 0.4}ch`;
+        }
+        input.style.width = isSpaceSlot ? "0.1ch" : baseWidth;
+        if (isSpaceSlot) {
+          input.dataset.spaceSlot = "true";
+          input.dataset.baseWidth = baseWidth;
+          input.dataset.narrowWidth = "0.1ch";
+          input.dataset.basePadding = "4px 6px";
+          input.dataset.narrowPadding = "1px 2px";
+          input.dataset.baseMargin = "0 2px";
+          input.dataset.narrowMargin = "0 1px";
+          input.style.minWidth = input.dataset.narrowWidth;
+          input.style.padding = input.dataset.narrowPadding;
+          input.style.margin = input.dataset.narrowMargin;
         }
         input.setAttribute("inputmode", "text");
         input.setAttribute("autocomplete", "off");
@@ -1073,7 +1131,20 @@ const STRESSED_WORDS =
 
         input.addEventListener("input", () => {
           input.value = sanitizeInput(input.value);
-          if (LIMIT_INPUT_LENGTH && input.value.length >= maxLen) {
+          if (input.dataset.spaceSlot === "true") {
+            if (input.value.length === 0) {
+              input.style.width = input.dataset.narrowWidth;
+              input.style.minWidth = input.dataset.narrowWidth;
+              input.style.padding = input.dataset.narrowPadding;
+              input.style.margin = input.dataset.narrowMargin;
+            } else {
+              input.style.width = input.dataset.baseWidth;
+              input.style.minWidth = input.dataset.baseWidth;
+              input.style.padding = input.dataset.basePadding;
+              input.style.margin = input.dataset.baseMargin;
+            }
+          }
+          if (limitLength && input.value.length >= maxLen) {
             const next = currentInputs[currentInputs.indexOf(input) + 1];
             if (next) next.focus();
           }
@@ -1101,6 +1172,9 @@ const STRESSED_WORDS =
     }
 
     function checkAnswer() {
+      const now = Date.now();
+      if (now - lastSubmitAt < SUBMIT_COOLDOWN_MS) return;
+      lastSubmitAt = now;
       if (locked || !currentItem) return;
       if (!currentInputs.length) return;
 
