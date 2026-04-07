@@ -1163,15 +1163,18 @@ const STRESSED_WORDS =
         if (limitLength) {
           input.maxLength = maxLen;
         }
-        input.style.width = isSpaceSlot ? "0.12ch" : baseWidth;
+        input.style.width = isSpaceSlot ? "0.1ch" : baseWidth;
         if (isSpaceSlot) {
           input.dataset.spaceSlot = "true";
           input.dataset.baseWidth = baseWidth;
-          input.dataset.narrowWidth = "0.12ch";
+          input.dataset.narrowWidth = "0.1ch";
           input.dataset.basePadding = "4px 6px";
           input.dataset.narrowPadding = "1px 2px";
+          input.dataset.baseMargin = "0 2px";
+          input.dataset.narrowMargin = "0 1px";
           input.style.minWidth = input.dataset.narrowWidth;
           input.style.padding = input.dataset.narrowPadding;
+          input.style.margin = input.dataset.narrowMargin;
         }
         input.setAttribute("inputmode", "text");
         input.setAttribute("autocomplete", "off");
@@ -1187,10 +1190,12 @@ const STRESSED_WORDS =
               input.style.width = input.dataset.narrowWidth;
               input.style.minWidth = input.dataset.narrowWidth;
               input.style.padding = input.dataset.narrowPadding;
+              input.style.margin = input.dataset.narrowMargin;
             } else {
               input.style.width = input.dataset.baseWidth;
               input.style.minWidth = input.dataset.baseWidth;
               input.style.padding = input.dataset.basePadding;
+              input.style.margin = input.dataset.baseMargin;
             }
           }
           if (limitLength && input.value.length >= maxLen) {
