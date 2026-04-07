@@ -1013,6 +1013,8 @@ const STRESSED_WORDS =
     let locked = false;
     let currentItem = null;
     let currentInputs = [];
+    let lastSubmitAt = 0;
+    const SUBMIT_COOLDOWN_MS = 150;
 
     const wordEl = document.getElementById("word");
     const panelEl = document.getElementById("panel");
@@ -1226,6 +1228,9 @@ const STRESSED_WORDS =
     }
 
     function checkAnswer() {
+      const now = Date.now();
+      if (now - lastSubmitAt < SUBMIT_COOLDOWN_MS) return;
+      lastSubmitAt = now;
       if (locked || !currentItem) return;
       if (!currentInputs.length) return;
 
