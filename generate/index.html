@@ -312,13 +312,26 @@
 
   <script>
 /*
-  МАССИВ СЛОВ ДЛЯ ОРФОГРАФИИ
+  НАСТРОЙКИ ТРЕНАЖЕРА
+  -------------------
+  LIMIT_INPUT_LENGTH:
+  true  = длина поля ограничена длиной пропуска, автофокус на следующее поле работает по длине.
+  false = длина поля не ограничена.
+
+  SPACE_TRAINING_MODE:
+  true  = режим "слитно/раздельно": пустые/пробельные пропуски отображаются очень узкими.
+  false = обычный режим.
+
+  МАССИВ СЛОВ ДЛЯ ОРФОГРАФИИ 
   -------------------------
+  STRESSED_WORDS:
   Формат:
   1) Группы подряд идущих заглавных букв заменяются на input.
   2) Конструкция [x] заменяется на input (x может быть пустым, например []).
-  3) Конструкция *x* оставляет содержимое обычным текстом (без замены на input).
+  3) Конструкция *X* оставляет содержимое обычным текстом (без замены на input).
 */
+const LIMIT_INPUT_LENGTH = {{{__LIMIT_INPUT_LENGTH__}}};
+const SPACE_TRAINING_MODE = {{{__SPACE_TRAINING_MODE__}}};
 
 const STRESSED_WORDS = 
 `
@@ -853,8 +866,6 @@ const STRESSED_WORDS =
 
   <script>
     const STORAGE_KEY = "{{{__STORAGE__KEY__}}}";
-    const LIMIT_INPUT_LENGTH = {{{__LIMIT_INPUT_LENGTH__}}};
-    const SPACE_TRAINING_MODE = {{{__SPACE_TRAINING_MODE__}}};
     const SETTINGS_KEY = `${STORAGE_KEY}-settings`;
     const DEFAULT_DELAY_MS = 1000;
     const limitLength = SPACE_TRAINING_MODE ? true : LIMIT_INPUT_LENGTH;
