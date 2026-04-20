@@ -511,6 +511,14 @@ const STRESSED_WORDS =
       box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.14);
     }
 
+    .letter-input::-webkit-contacts-auto-fill-button,
+    .letter-input::-webkit-credentials-auto-fill-button {
+      visibility: hidden;
+      pointer-events: none;
+      position: absolute;
+      right: 0;
+    }
+
     .letter-input.correct {
       border-color: var(--ok);
       background: rgba(21, 128, 61, 0.12);
@@ -1016,6 +1024,13 @@ const STRESSED_WORDS =
     let currentInputs = [];
     let lastSubmitAt = 0;
     const SUBMIT_COOLDOWN_MS = 150;
+    const scheduleFrame = typeof requestAnimationFrame === "function"
+      ? requestAnimationFrame
+      : (cb) => setTimeout(cb, 0);
+    const cancelFrame = typeof cancelAnimationFrame === "function"
+      ? cancelAnimationFrame
+      : clearTimeout;
+    let rafFocusId = 0;
 
     const wordEl = document.getElementById("word");
     const panelEl = document.getElementById("panel");
@@ -1051,6 +1066,27 @@ const STRESSED_WORDS =
 
     function sanitizeInput(value) {
       return value.replace(/[\r\n]+/g, "");
+    }
+
+    function focusField(input) {
+      if (!input) return;
+      if (rafFocusId) cancelFrame(rafFocusId);
+      rafFocusId = scheduleFrame(() => {
+        rafFocusId = 0;
+        try {
+          input.focus({ preventScroll: true });
+        } catch (error) {
+          input.focus();
+        }
+        if (typeof input.setSelectionRange === "function") {
+          const pos = input.value.length;
+          try {
+            input.setSelectionRange(pos, pos);
+          } catch (error) {
+            // no-op for browsers that do not allow selection APIs on focused field
+          }
+        }
+      });
     }
 
     function buildWordList(words) {
@@ -1147,7 +1183,7 @@ const STRESSED_WORDS =
       currentItem = item;
       currentInputs = [];
 
-      wordEl.innerHTML = "";
+      const fragment = document.createDocumentFragment();
       resultEl.textContent = "";
       resultEl.className = "result";
       restartWrapEl.classList.add("hidden");
@@ -1159,7 +1195,7 @@ const STRESSED_WORDS =
           const span = document.createElement("span");
           span.className = "chunk";
           span.textContent = token.preserveCase ? token.value : normalizeValue(token.value);
-          wordEl.appendChild(span);
+          fragment.appendChild(span);
           return;
         }
 
@@ -1187,9 +1223,16 @@ const STRESSED_WORDS =
           input.style.margin = input.dataset.narrowMargin;
         }
         input.setAttribute("inputmode", "text");
-        input.setAttribute("autocomplete", "off");
-        input.setAttribute("autocapitalize", "none");
+        input.setAttribute("autocomplete", "new-password");
+        input.setAttribute("autocapitalize", "off");
+        input.setAttribute("autocorrect", "off");
+        input.setAttribute("aria-autocomplete", "none");
         input.setAttribute("spellcheck", "false");
+        input.setAttribute("enterkeyhint", "done");
+        input.setAttribute("data-lpignore", "true");
+        input.setAttribute("data-1p-ignore", "true");
+        input.setAttribute("data-form-type", "other");
+        input.name = `answer-${state.index}-${currentInputs.length}`;
         input.dataset.answer = normalizeValue(token.answer);
         input.dataset.kind = token.kind;
 
@@ -1210,7 +1253,7 @@ const STRESSED_WORDS =
           }
           if (limitLength && input.value.length >= maxLen) {
             const next = currentInputs[currentInputs.indexOf(input) + 1];
-            if (next) next.focus();
+            if (next) focusField(next);
           }
         });
 
@@ -1222,8 +1265,10 @@ const STRESSED_WORDS =
         });
 
         currentInputs.push(input);
-        wordEl.appendChild(input);
+        fragment.appendChild(input);
       });
+
+      wordEl.replaceChildren(fragment);
 
       statsEl.textContent = `Правильных ответов: ${state.correct} / ${state.total}`;
       progressEl.textContent = `Пройдено: ${state.index} / ${DATA.length}`;
@@ -1231,7 +1276,7 @@ const STRESSED_WORDS =
       checkBtnEl.disabled = currentInputs.length === 0;
 
       if (currentInputs[0]) {
-        setTimeout(() => currentInputs[0].focus(), 0);
+        focusField(currentInputs[0]);
       }
     }
 
