@@ -918,6 +918,7 @@ const STRESSED_WORDS =
         tokens.push({
           type: "input",
           answer: normalizeValue(raw),
+          sourceAnswer: raw,
           length: raw.length,
           kind: "bracket",
         });
@@ -1056,10 +1057,17 @@ const STRESSED_WORDS =
       return words
         .map(word => {
           const tokens = tokenize(word);
-          const parts = tokens
-            .filter(token => token.type === "input")
-            .map(token => token.answer || "");
-          return mergeAnswer(tokens, parts).trim();
+          return tokens
+            .map(token => {
+              if (token.type === "text") {
+                return token.preserveCase ? token.value : normalizeValue(token.value);
+              }
+              if (token.kind === "bracket") {
+                return token.sourceAnswer ?? "";
+              }
+              return token.answer || "";
+            })
+            .join("");
         })
         .filter(Boolean)
         .join("\n");
