@@ -5,12 +5,28 @@
 
   <script>
 /*
-  МАССИВ СЛОВ ДЛЯ ОРФОГРАФИИ
+  НАСТРОЙКИ ТРЕНАЖЕРА
+  -------------------
+  НАЗВАНИЕ ТРЕНАЖЕРА: Слитное/раздельное написание предлогов
+
+  LIMIT_INPUT_LENGTH:
+  true  = длина поля ограничена длиной пропуска, автофокус на следующее поле работает по длине.
+  false = длина поля не ограничена.
+
+  SPACE_TRAINING_MODE:
+  true  = режим "слитно/раздельно": пустые/пробельные пропуски отображаются очень узкими.
+  false = обычный режим.
+
+  МАССИВ СЛОВ ДЛЯ ОРФОГРАФИИ 
   -------------------------
+  STRESSED_WORDS:
   Формат:
   1) Группы подряд идущих заглавных букв заменяются на input.
-  2) Английская X заменяется на input (X означает пустое место).
+  2) Конструкция [x] заменяется на input (x может быть пустым, например []).
+  3) Конструкция *X* оставляет содержимое обычным текстом (без замены на input).
 */
+const LIMIT_INPUT_LENGTH = true;
+const SPACE_TRAINING_MODE = true;
 
 const STRESSED_WORDS = 
 `
@@ -229,6 +245,14 @@ const STRESSED_WORDS =
       box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.14);
     }
 
+    .letter-input::-webkit-contacts-auto-fill-button,
+    .letter-input::-webkit-credentials-auto-fill-button {
+      visibility: hidden;
+      pointer-events: none;
+      position: absolute;
+      right: 0;
+    }
+
     .letter-input.correct {
       border-color: var(--ok);
       background: rgba(21, 128, 61, 0.12);
@@ -421,6 +445,7 @@ const STRESSED_WORDS =
       padding: 14px;
       font-size: 14px;
       box-shadow: 0 10px 26px rgba(31, 31, 31, 0.08);
+      margin-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
     }
 
     .wrong-list h3 {
@@ -483,6 +508,10 @@ const STRESSED_WORDS =
     }
 
     @media (max-width: 540px) {
+      .wrong-list {
+        margin-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+      }
+
       .footer-inner {
         flex-direction: column;
         gap: 8px;
@@ -504,7 +533,7 @@ const STRESSED_WORDS =
     <header class="hero">
       <span class="tag">Орфография</span>
       <h2>Тренажёр Слитное/раздельное написание предлогов</h2>
-      <!-- <p>Заполните пропуски в словах. Группы заглавных букв и символы X превращаются в поля ввода. Если X означает пустое место, оставьте поле пустым.</p> -->
+      <!-- <p>Заполните пропуски в словах. Группы заглавных букв и конструкции [x] превращаются в поля ввода.</p> -->
     </header>
 
     <section class="panel" id="panel">
@@ -558,8 +587,6 @@ const STRESSED_WORDS =
 
   <script>
     const STORAGE_KEY = "dxze1e";
-    const LIMIT_INPUT_LENGTH = true;
-    const SPACE_TRAINING_MODE = true;
     const SETTINGS_KEY = `${STORAGE_KEY}-settings`;
     const DEFAULT_DELAY_MS = 1000;
     const limitLength = SPACE_TRAINING_MODE ? true : LIMIT_INPUT_LENGTH;
@@ -570,7 +597,7 @@ const STRESSED_WORDS =
 
     function tokenizePlain(text) {
       const tokens = [];
-      const re = /([A-ZА-ЯЁ]+|[Xx]+)/g;
+      const re = /(\*[^*]*\*|[A-ZА-ЯЁ]+)/g;
       let lastIndex = 0;
       let match;
 
@@ -583,12 +610,11 @@ const STRESSED_WORDS =
         }
 
         const raw = match[0];
-        if (/^[Xx]+$/.test(raw)) {
+        if (raw.startsWith("*") && raw.endsWith("*")) {
           tokens.push({
-            type: "input",
-            answer: "",
-            length: raw.length,
-            kind: "empty",
+            type: "text",
+            value: raw.slice(1, -1),
+            preserveCase: true,
           });
         } else {
           tokens.push({
@@ -637,6 +663,7 @@ const STRESSED_WORDS =
         tokens.push({
           type: "input",
           answer: normalizeValue(raw),
+          sourceAnswer: raw,
           length: raw.length,
           kind: "bracket",
         });
@@ -734,6 +761,13 @@ const STRESSED_WORDS =
     let currentInputs = [];
     let lastSubmitAt = 0;
     const SUBMIT_COOLDOWN_MS = 150;
+    const scheduleFrame = typeof requestAnimationFrame === "function"
+      ? requestAnimationFrame
+      : (cb) => setTimeout(cb, 0);
+    const cancelFrame = typeof cancelAnimationFrame === "function"
+      ? cancelAnimationFrame
+      : clearTimeout;
+    let rafFocusId = 0;
 
     const wordEl = document.getElementById("word");
     const panelEl = document.getElementById("panel");
@@ -771,14 +805,42 @@ const STRESSED_WORDS =
       return value.replace(/[\r\n]+/g, "");
     }
 
+    function focusField(input) {
+      if (!input) return;
+      if (rafFocusId) cancelFrame(rafFocusId);
+      rafFocusId = scheduleFrame(() => {
+        rafFocusId = 0;
+        try {
+          input.focus({ preventScroll: true });
+        } catch (error) {
+          input.focus();
+        }
+        if (typeof input.setSelectionRange === "function") {
+          const pos = input.value.length;
+          try {
+            input.setSelectionRange(pos, pos);
+          } catch (error) {
+            // no-op for browsers that do not allow selection APIs on focused field
+          }
+        }
+      });
+    }
+
     function buildWordList(words) {
       return words
         .map(word => {
           const tokens = tokenize(word);
-          const parts = tokens
-            .filter(token => token.type === "input")
-            .map(token => token.answer || "");
-          return mergeAnswer(tokens, parts).trim();
+          return tokens
+            .map(token => {
+              if (token.type === "text") {
+                return token.preserveCase ? token.value : normalizeValue(token.value);
+              }
+              if (token.kind === "bracket") {
+                return token.sourceAnswer ?? "";
+              }
+              return token.answer || "";
+            })
+            .join("");
         })
         .filter(Boolean)
         .join("\n");
@@ -858,7 +920,7 @@ const STRESSED_WORDS =
       currentItem = item;
       currentInputs = [];
 
-      wordEl.innerHTML = "";
+      const fragment = document.createDocumentFragment();
       resultEl.textContent = "";
       resultEl.className = "result";
       restartWrapEl.classList.add("hidden");
@@ -869,8 +931,8 @@ const STRESSED_WORDS =
         if (token.type === "text") {
           const span = document.createElement("span");
           span.className = "chunk";
-          span.textContent = normalizeValue(token.value);
-          wordEl.appendChild(span);
+          span.textContent = token.preserveCase ? token.value : normalizeValue(token.value);
+          fragment.appendChild(span);
           return;
         }
 
@@ -898,9 +960,16 @@ const STRESSED_WORDS =
           input.style.margin = input.dataset.narrowMargin;
         }
         input.setAttribute("inputmode", "text");
-        input.setAttribute("autocomplete", "off");
-        input.setAttribute("autocapitalize", "none");
+        input.setAttribute("autocomplete", "new-password");
+        input.setAttribute("autocapitalize", "off");
+        input.setAttribute("autocorrect", "off");
+        input.setAttribute("aria-autocomplete", "none");
         input.setAttribute("spellcheck", "false");
+        input.setAttribute("enterkeyhint", "done");
+        input.setAttribute("data-lpignore", "true");
+        input.setAttribute("data-1p-ignore", "true");
+        input.setAttribute("data-form-type", "other");
+        input.name = `answer-${state.index}-${currentInputs.length}`;
         input.dataset.answer = normalizeValue(token.answer);
         input.dataset.kind = token.kind;
 
@@ -921,7 +990,7 @@ const STRESSED_WORDS =
           }
           if (limitLength && input.value.length >= maxLen) {
             const next = currentInputs[currentInputs.indexOf(input) + 1];
-            if (next) next.focus();
+            if (next) focusField(next);
           }
         });
 
@@ -933,16 +1002,18 @@ const STRESSED_WORDS =
         });
 
         currentInputs.push(input);
-        wordEl.appendChild(input);
+        fragment.appendChild(input);
       });
+
+      wordEl.replaceChildren(fragment);
 
       statsEl.textContent = `Правильных ответов: ${state.correct} / ${state.total}`;
       progressEl.textContent = `Пройдено: ${state.index} / ${DATA.length}`;
-      // hintEl.textContent = "Заглавные буквы и X превращаются в поля. Если X означает пустое место, оставьте поле пустым.";
+      // hintEl.textContent = "Заглавные буквы и [x] превращаются в поля, а *x* оставляет текст обычным.";
       checkBtnEl.disabled = currentInputs.length === 0;
 
       if (currentInputs[0]) {
-        setTimeout(() => currentInputs[0].focus(), 0);
+        focusField(currentInputs[0]);
       }
     }
 
