@@ -869,6 +869,7 @@ const STRESSED_WORDS =
           tokens.push({
             type: "text",
             value: raw.slice(1, -1),
+            preserveCase: true,
           });
         } else {
           tokens.push({
@@ -1149,7 +1150,7 @@ const STRESSED_WORDS =
         if (token.type === "text") {
           const span = document.createElement("span");
           span.className = "chunk";
-          span.textContent = normalizeValue(token.value);
+          span.textContent = token.preserveCase ? token.value : normalizeValue(token.value);
           wordEl.appendChild(span);
           return;
         }
