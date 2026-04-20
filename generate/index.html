@@ -260,7 +260,7 @@
     <header class="hero">
       <span class="tag">Генератор</span>
       <h2>Генератор тренажёров</h2>
-      <p>Заполните тему и список слов. Заглавные подряд идущие группы превращаются в поля ввода, а формат [x] позволяет проверять любые символы (включая пробелы).</p>
+      <p>Заполните тему и список слов. Заглавные подряд идущие группы превращаются в поля ввода, формат [x] позволяет проверять любые символы, а *Х* оставляет заглавные как обычный текст.</p>
     </header>
 
     <section class="panel">
@@ -272,8 +272,8 @@
       <div class="field" style="margin-top: 16px;">
         <label for="wordsInput">Проверяемые строки (каждая с новой строки)</label>
         <textarea id="wordsInput" placeholder="кАстанЬЕт[]"></textarea>
-        <div class="hint">Формат: заглавные группы = пропуск, [x] = любая группа символов (может быть пустой).</div>
-        <div class="example">Пример строк: вОрОнА · н[е]где · кОрОвА · бахил[] · до[ ]ма</div>
+        <div class="hint">Формат: заглавные группы = пропуск, [x] = любая группа символов (может быть пустой), *Х* = не превращать заглавные в пропуск.</div>
+        <div class="example">Пример строк: вОрОнА · *Р*Остов · н[е]где · бахил[] · до[ ]ма</div>
       </div>
 
       <div class="field" style="margin-top: 14px;">
@@ -317,6 +317,7 @@
   Формат:
   1) Группы подряд идущих заглавных букв заменяются на input.
   2) Конструкция [x] заменяется на input (x может быть пустым, например []).
+  3) Конструкция *x* оставляет содержимое обычным текстом (без замены на input).
 */
 
 const STRESSED_WORDS = 
@@ -851,7 +852,7 @@ const STRESSED_WORDS =
 
     function tokenizePlain(text) {
       const tokens = [];
-      const re = /([A-ZА-ЯЁ]+)/g;
+      const re = /(\*[^*]*\*|[A-ZА-ЯЁ]+)/g;
       let lastIndex = 0;
       let match;
 
@@ -864,12 +865,19 @@ const STRESSED_WORDS =
         }
 
         const raw = match[0];
-        tokens.push({
-          type: "input",
-          answer: normalizeValue(raw),
-          length: raw.length,
-          kind: "upper",
-        });
+        if (raw.startsWith("*") && raw.endsWith("*")) {
+          tokens.push({
+            type: "text",
+            value: raw.slice(1, -1),
+          });
+        } else {
+          tokens.push({
+            type: "input",
+            answer: normalizeValue(raw),
+            length: raw.length,
+            kind: "upper",
+          });
+        }
 
         lastIndex = match.index + raw.length;
       }
@@ -1210,7 +1218,7 @@ const STRESSED_WORDS =
 
       statsEl.textContent = `Правильных ответов: ${state.correct} / ${state.total}`;
       progressEl.textContent = `Пройдено: ${state.index} / ${DATA.length}`;
-      // hintEl.textContent = "Заглавные буквы и [x] превращаются в поля ввода.";
+      // hintEl.textContent = "Заглавные буквы и [x] превращаются в поля, а *x* оставляет текст обычным.";
       checkBtnEl.disabled = currentInputs.length === 0;
 
       if (currentInputs[0]) {
