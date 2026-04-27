@@ -46,6 +46,7 @@ const STRESSED_WORDS =
 таЯть
 чаЯть
 чуЯть
+хаЯТЬ
 слышАть
 слушАть
 важничАть
@@ -59,6 +60,8 @@ const STRESSED_WORDS =
 пыхАть
 ябедничАть
 ёрзАть
+ворочАть
+роптАть
 видЕть
 зависЕть
 ненавидЕть
@@ -85,15 +88,18 @@ const STRESSED_WORDS =
 мерещИться
 удвоИть
 тешИть
-мерИть
-мучИть
-выздоровЕть
+мелИть (натирать мелом)
 опостылЕть
-опротивЕть
+размалевАть
+выскоблИть
+лопотАть
 алкАть → алчущий
 пыхАть → пышущий
 внимАть → внемлющий
-движИть → движимый
+гонЯть → гоняЮщий
+тесАть (обтачивать) → тешУщий
+мерИть → измеренный
+мучИть → измученный
 `.trim().split('\n').map(line => line.trim())
   </script>
 
@@ -623,7 +629,7 @@ const STRESSED_WORDS =
   </dialog>
 
   <script>
-    const STORAGE_KEY = "41rokr";
+    const STORAGE_KEY = "ic5pb1";
     const SETTINGS_KEY = `${STORAGE_KEY}-settings`;
     const DEFAULT_DELAY_MS = 1000;
     const limitLength = SPACE_TRAINING_MODE ? true : LIMIT_INPUT_LENGTH;
