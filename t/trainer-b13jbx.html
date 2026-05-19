@@ -33,15 +33,21 @@ const STRESSED_WORDS =
 в[]виду
 в[]место
 в[]роде
+в[]близи
+в[]переди
 в[]следствие
+в[]замен
 на[]подобие
 на[]счет
 с[]верх
 не[]смотря на
 не[]взирая на
 в[]след
+на[]перекор
 на[]встречу
 на[]против
+по[]середине
+на[]кануне
 в[ ]виде
 в[ ]связи[ ]с
 в[ ]продолжение
@@ -52,11 +58,15 @@ const STRESSED_WORDS =
 в[ ]силу
 в[ ]меру
 в[ ]области
+в[ ]отличие[ ]от
+в[ ]качетсве
+по[ ]мере
 на[ ]протяжении
 в[ ]отношении
 за[ ]исключением
 за[ ]счет
 не[ ]считая
+во[ ]избежание
 `.trim().split('\n').map(line => line.trim())
   </script>
 
@@ -586,7 +596,7 @@ const STRESSED_WORDS =
   </dialog>
 
   <script>
-    const STORAGE_KEY = "dxze1e";
+    const STORAGE_KEY = "b13jbx";
     const SETTINGS_KEY = `${STORAGE_KEY}-settings`;
     const DEFAULT_DELAY_MS = 1000;
     const limitLength = SPACE_TRAINING_MODE ? true : LIMIT_INPUT_LENGTH;
